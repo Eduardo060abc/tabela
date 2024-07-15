@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tabela Interativa Melhorada</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@11.0.1/dist/handsontable.full.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #282c34;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+        }
+        h2 {
+            color: #73964b;
+            text-align: center;
+        }
+        #handsontable-container {
+            margin: 20px auto;
+            width: 90%;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #5f693c;
+            color: #282c34;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0e1316;
+        }
+        #buttons {
+            text-align: center;
+        }
+        .dropdown-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .dropdown-container label {
+            margin-right: 10px;
+        }
+        .dropdown-container select, .dropdown-container input {
+            margin-right: 10px;
+            padding: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Tabela Interativa Melhorada</h2>
+
+<div id="buttons">
+    <button onclick="addRow()">Adicionar Linha</button>
+    <button id="downloadExcelButton">Baixar Excel</button>
+</div>
+
+<div id="handsontable-container"></div>
+
+<div class="dropdown-container">
+    <label for="menuSelect">Selecione o menu:</label>
+    <select id="menuSelect">
+        <option value="turno">Turno</option>
+        <option value="tipoManutencao">Tipo de Manutenção</option>
+        <option value="codigoManutencao">Código de Manutenção</option>
+        <option value="sistema">Sistema</option>
+        <option value="subSistema">Sub Sistema</option>
+        <option value="parteSubSistema">Parte do Sub Sistema</option>
+    </select>
+    <input type="text" id="menuItem" placeholder="Novo item">
+    <button onclick="addItem()">Adicionar Item</button>
+    <button onclick="removeItem()">Remover Item</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/handsontable@11.0.1/dist/handsontable.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
+<script>
+    const container = document.getElementById('handsontable-container');
+
+    const timeSource = Array.from({ length: 24 }, (_, h) => {
+        return Array.from({ length: 4 }, (_, q) => {
+            const hour = String(h).padStart(2, '0');
+            const minutes = String(q * 15).padStart(2, '0');
+            return `${hour}:${minutes}`;
+        });
+    }).flat();
+
+    const dropdownOptions = {
+        turno: ["1°", "2°", "3°", "4°"],
+        tipoManutencao: ["Elétrica", "Lubrificação", "Mecânica", "Pneu / Borracharia", "Eletromecânica", "Acidente operacional", "Acompanhamento", "Inspeção"],
+        codigoManutencao: ["HAC", "HMC", "HMP", "HOI", "LUB", "HIN"],
+        sistema: [
+            "Acidente operacional",
+            "Falha operacional",
+            "Itens Estruturais",
+            "Lubrificação",
+            "Manutenção preventiva",
+            "Operacional",
+            "Sistema auxiliares",
+            "Sistema de aceleração",
+            "Sistema de Admissão",
+            "Sistema de água",
+            "Sistema de ancoragem / patolamento",
+            "Sistema de arrefecimento",
+            "Sistema de avanço",
+            "Sistema de Combustível",
+            "Sistema de comunicação",
+            "Sistema CAN",
+            "Sistema de direção",
+            "Sistema de elevação",
+            "Sistema de emergência",
+            "Sistema de Escape",
+            "Sistema de frenagem",
+            "Sistema de iluminação",
+            "Sistema de implemento",
+            "Sistema de locomoção",
+            "Sistema de Lubrificação",
+            "Sistema de magazine",
+            "Sistema de partida",
+            "Sistema de percussão",
+            "Sistema de perfuração",
+            "Sistema de pneumático",
+            "Sistema de pressão /força /  rompedor",
+            "Sistema de propulsão",
+            "Sistema de proteção",
+            "Sistema de refrigeração",
+            "Sistema de rotação",
+            "Sistema de Supressão de incêndio",
+            "Sistema de transmissão e força",
+            "Sistema trocador de haste",
+            "Sistema de utilidades",
+            "Sistema elétrico",
+            "Sistema Hidráulico"
+        ],
+        subSistema: [
+            "Abraçadeiras do pacote",
+            "Acelerador",
+            "Acidente operacional",
+            "Acionamento",
+            "Acumulador",
+            "Alternador",
+            "Ancorador",
+            "Ansúl",
+            "Ar condicionado",
+            "Articulação",
+            "Avanço rápido",
+            "Báscula",
+            "Base das hastes",
+            "Banco",
+            "Bateria",
+            "Bazuca",
+            "Bloco de Água",
+            "Bloco de Ar",
+            "Bloco de avanço",
+            "Bloco de comando",
+            "Bloco hidráulico",
+            "Bloco de mangueiras",
+            "Bloco de paralelismo",
+            "Bloco de percussão",
+            "Bloco de válvula",
+            "Bolt",
+            "Bomba de água",
+            "Bomba de água Br1",
+            "Bomba de água Br2",
+            "Bomba de combustível",
+            "Bomba de direção",
+            "Bomba hidráulica",
+            "Bomba hidráulica Br1",
+            "Bomba hidráulica Br2",
+            "Botoeira de emergência",
+            "Braço",
+            "Braço de escavação",
+            "Braço 1 e 2",
+            "Braço 1",
+            "Braço 2",
+            "Bucha Centralizadora",
+            "Buzina",
+            "Cabeça rotativa",
+            "Cabeçote de água",
+            "Cabeçote de avanço",
+            "Cabine",
+            "Cabo de Aço",
+            "Cabo Elétrico",
+            "Cabo de avanço",
+            "Cabo de retorno",
+            "Cabo de avanço Br 01",
+            "Cabo de avanço Br 02",
+            "Cabo de retorno Br 01",
+            "Cabo de retorno Br 02",
+            "Cachimbo D'água",
+            "Caixa de fusíveis",
+            "Caixa do rompedor",
+            "Câmera",
+            "Câmera frontal",
+            "Câmera de ré",
+            "Capô",
+            "Cardan",
+            "Carretel de Mangueira",
+            "Central de graxa",
+            "Centralizador da haste",
+            "Cesto",
+            "Chassi",
+            "Cilindro",
+            "Cilindro de ancoragem",
+            "Cilindro de ancoragem Br1",
+            "Cilindro de ancoragem Br2",
+            "Cilindro da Bazuca",
+            "Cilindro da Cabine",
+            "Cilindro de articulação",
+            "Cilindro de Avanço",
+            "Cilindro de Avanço L1",
+            "Cilindro de Avanço L2",
+            "Cilindro de avanço do martelo",
+            "Cilindro de avanço da mesa",
+            "Cilindro de direção",
+            "Cilindro de direção LD",
+            "Cilindro de direção LE",
+            "Cilindro de Elevação",
+            "Cilindro de elevação LD",
+            "Cilindro de elevação LE",
+            "Cilindro de escavação",
+            "Cilindro extensivo L1",
+            "Cilindro extensivo L2",
+            "Cilindro de giro",
+            "Cilindro de inclinação",
+            "Cilindro de mov. lateral LD",
+            "Cilindro de mov. lateral LE",
+            "Cilindro da Patola",
+            "Cilindro pegador de hastes",
+            "Cilindro do pito",
+            "Cilindro de retorno",
+            "Cilindro do zoom",
+            "Cilindro 90°",
+            "Comandos",
+            "Compressor",
+            "Concha",
+            "Controle remoto",
+            "Conversor",
+            "Cubo de roda",
+            "Direção",
+            "Disjuntor",
+            "Disjuntor principal",
+            "Eixo",
+            "Eixo diferencial",
+            "Eixo Dianteiro",
+            "Eixo Traseiro",
+            "Enrrolador de mangueiras",
+            "Enrrolador de cabo",
+            "Escapamento",
+            "Esguicho de água",
+            "Estabilizador",
+            "Esteira",
+            "Extintor",
+            "Falha operacional",
+            "Farol",
+            "Fechadura",
+            "Filtro",
+            "Filtro racor",
+            "Fim de Curso",
+            "Flowmeter",
+            "Freio",
+            "Freio de estacionamento",
+            "Giroflex",
+            "Guincho",
+            "Gripper",
+            "Grupo de válvula",
+            "Gui",
+            "Hélice",
+            "Ignição",
+            "Implementos",
+            "Intercooler",
+            "Joystick",
+            "Lamina",
+            "Lança",
+            "Lança H",
+            "Lança 1",
+            "Lança 2",
+            "Lava trilho",
+            "Limpador de Parabrisa",
+            "Linhas de combustível",
+            "Linhas de lubrificação",
+            "Link",
+            "Lubrificação",
+            "Luz de localização",
+            "Magazine",
+            "Manômetros",
+            "Mandrill",
+            "Mangote",
+            "Mangote de água",
+            "Mangueira do aditivo",
+            "Mangueira de água",
+            "Mangueira de lavagem",
+            "Mangueira de combustível",
+            "Mangueira hidraúlica",
+            "Mangueira de Lubrificação",
+            "Manipulador de haste",
+            "Manipulador de Haste",
+            "Manipulador de tela",
+            "Manutenção preventiva",
+            "Mecanismo de giro",
+            "Mecanismo de giro Br01",
+            "Mecanismo de giro Br02",
+            "Mesa de avanço",
+            "Mesa do martelo",
+            "Módulos",
+            "Módulo eletrônico",
+            "Módulo do painel",
+            "Módulo de perfuração",
+            "Monitor",
+            "Motor de Avanço",
+            "Motor de giro",
+            "Motor de rotação",
+            "Motor Diesel",
+            "Motor de partida",
+            "Motor Elétrico",
+            "Motor Elétrico Br1",
+            "Motor Elétrico Br2",
+            "Munck",
+            "Operacional",
+            "Pacote de mangueiras",
+            "Painel de comandos",
+            "Painel elétrico",
+            "Painel de Intrumentos"
+        ],
+        parteSubSistema: [
+            "Abraçadeira",
+            "Abraçadeira de mangote",
+            "Acelerador",
+            "Acidente operacional",
+            "Acoplamento",
+            "Acumuladores",
+            "Acumulador de alta",
+            "Acumulador de baixa",
+            "Admissão",
+            "Aftercooler",
+            "Alavanca de comando",
+            "Alavanca de elevação",
+            "Aletas",
+            "Alternador",
+            "Ancorador",
+            "Aneis de Vedação",
+            "Ansul",
+            "Antena de rádio",
+            "Articulação central",
+            "Ar comprimido",
+            "Ar condicionado",
+            "Ar-misto",
+            "Aspersor",
+            "Automático",
+            "Avanço Rápido",
+            "Avanço",
+            "Banco",
+            "Base",
+            "Base Centralizadora",
+            "Base do cesto",
+            "Base do compressor",
+            "Base do Gripper",
+            "Base do martelo",
+            "Base do relé",
+            "Base da roldana",
+            "Batente",
+            "Batente Fim de curso",
+            "Bateria",
+            "Bazuca",
+            "Bica",
+            "Bico",
+            "Bico dosador",
+            "Bloco distribuidor",
+            "Bloco de freio",
+            "Bloco hidráulico",
+            "Bloco de paralelismo",
+            "Bobina do disjuntor",
+            "Bobina da solenóide",
+            "Bloco de válvula",
+            "Bolt",
+            "Bomba de água",
+            "Bomba de combustível",
+            "Bomba de concreto",
+            "Bomba Hidráulica",
+            "Bordas de desgaste",
+            "Borracha de vedação",
+            "Botoeira",
+            "Botoeira de emergência",
+            "Botoeira de freio",
+            "Braço",
+            "Braço 1",
+            "Braço 2",
+            "Braço do limpador",
+            "Bucha",
+            "Bucha Centralizadora",
+            "Bucha de Bronze",
+            "Bucha do Chuk",
+            "Bujão",
+            "Buzina",
+            "Cabeçote",
+            "Cabeçote do filtro",
+            "Cabeçote da Perfuratriz",
+            "Cabeçote água",
+            "Cabine",
+            "Cabo CAN",
+            "Cabo de aço",
+            "Cabo de Avanço",
+            "Cabo de avanço e retorno",
+            "Cabo de comando",
+            "Cabo de Retorno",
+            "Cabo Elétrico",
+            "Caçamba",
+            "Caixa do Ar Condicionado",
+            "Caixa flutuante",
+            "Caixa de módulos comando",
+            "Caixa de rotação",
+            "Calço",
+            "Calço metálico",
+            "Calços Deslizantes",
+            "Calha",
+            "Câmera",
+            "Câmera de ré",
+            "Câmera Dianteira",
+            "Câmera lateral",
+            "Câmera Traseira",
+            "Camisa do cilindro",
+            "Capô",
+            "Carretel de mangueira",
+            "Carrimho",
+            "Carrinho",
+            "Carter",
+            "Castanha do Pito",
+            "Centralizador",
+            "Centralizador frontal",
+            "Centralizador da haste",
+            "Centralizador intermediário",
+            "Cesto",
+            "Chapas",
+            "Chapa base",
+            "Chapa do fundo",
+            "Chassis",
+            "Chave de partida",
+            "Chave Bolt",
+            "Chave Geral",
+            "Check list Preventiva",
+            "Chicote elétrico",
+            "Cilindro da Bazuca",
+            "Cilindro",
+            "Cilindro da Cabine",
+            "Cilindro de ancoragem",
+            "Cilindro de articulação (direção)",
+            "Cilindro de avanço",
+            "Cilindro de direção",
+            "Cilindro de Elevação",
+            "Cilindro de giro",
+            "Cilindro de inclinação",
+            "Cilindro de mov. lateral LD",
+            "Cilindro de mov. lateral LE",
+            "Cilindro de rotação",
+            "Cilindro de translação",
+            "Cilindro pegador de hastes",
+            "Cilindro Zoom",
+            "Cinto de segurança",
+            "Comandos",
+            "Compressor",
+            "Comunicação CAN",
+            "Concha",
+            "Condensador",
+            "Condutor de alimentação",
+            "Conector",
+            "Conector da solenóide",
+            "Conexão Hidraúlica",
+            "Contator",
+            "Controle Remoto",
+            "Conversor",
+            "Correia",
+            "Corrente",
+            "Cruzeta",
+            "Cubo de Roda",
+            "Deslizantes",
+            "Diafragma",
+            "Disjuntor",
+            "Disjuntor Principal",
+            "Display",
+            "Dobradiça",
+            "Eixo Cardan",
+            "Elementos de fixação",
+            "Eletroválvula",
+            "Eletroventilador",
+            "Engate",
+            "Escada",
+            "Escapamento",
+            "Esguicho",
+            "Esguicho de água",
+            "Espiral de mangueira",
+            "Estabilizador",
+            "Esteira LE",
+            "Esteira LD",
+            "Eixo",
+            "Falha operacional",
+            "Farol",
+            "Farol da cabine",
+            "Farol Dianteiro",
+            "Farol do H",
+            "Farol Traseiro",
+            "Fechadura",
+            "Fechadura da porta",
+            "Ferramenta",
+            "Ferramenta Bolt",
+            "Filtro",
+            "Filtro da transmissão",
+            "Filtro de ar",
+            "Filtro de água",
+            "Filtro de óleo",
+            "Filtro Diesel",
+            "Filtro Hidráulico",
+            "Filtro de retorno",
+            "Filtro racor",
+            "Filtro Separador",
+            "Fim de curso",
+            "Fluído Compressor",
+            "Fluído compressor",
+            "Fluído de Arrefecimento",
+            "Fluído Diesel",
+            "Fluído Hidráulico",
+            "Fluído Rock Drill",
+            "Fluído Transmissão",
+            "Fonte de alimentação",
+            "Freio",
+            "Freio de Estacionamento",
+            "Freio de Serviço",
+            "Fusíveis",
+            "Gás",
+            "Giroflex",
+            "Graxa",
+            "Griper",
+            "Guiadeira",
+            "Guia das hastes",
+            "Guia do tambor",
+            "Haste",
+            "Hélice",
+            "Ignição",
+            "Implementos",
+            "Injetores",
+            "Instalação elétrica",
+            "Intercooler",
+            "Joystick",
+            "Lança",
+            "Lança H",
+            "Lança 01",
+            "Lança 02",
+            "Lanterna Traseira",
+            "Lava trilho",
+            "Limpa Trilho",
+            "Limpador de Parabrisas",
+            "Linhas de combustível",
+            "Linha de lubrificação",
+            "Lubrificação",
+            "Luz de freio",
+            "Luz de localização",
+            "Luz do Rockdrill",
+            "Mancal",
+            "Mancal da Lança TFX",
+            "Maçaneta",
+            "Magazine",
+            "Mangote",
+            "Mangote de água",
+            "Mangote de ar",
+            "Mangote da turbina",
+            "Mangueira do aditivo",
+            "Mangueira de água",
+            "Mangueira de lavagem",
+            "Mangueira de combustível",
+            "Mangueira hidraúlica",
+            "Mangueira de Lubrificação",
+            "Manipulador de haste",
+            "Manipulador de Haste",
+            "Manipulador de tela",
+            "Manutenção preventiva",
+            "Marcador de profundidade",
+            "Mastro",
+            "Material",
+            "Mecanismo de giro",
+            "Mesa centralizadora",
+            "Mesa do martelo",
+            "Módulo Chair",
+            "Módulo Eletrônico",
+            "Monitor",
+            "Motor de Avanço",
+            "Motor de Partida",
+            "Motor de rotação",
+            "Motor Diesel",
+            "Motor do Limpador",
+            "Motor elétrico",
+            "Motor Hidráulico",
+            "Movimentos",
+            "Niple",
+            "Óleo rockdrill",
+            "Óleo de transmissão",
+            "Olhal",
+            "Operacional",
+            "Oring",
+            "Pacote de mangueira",
+            "Painel elétrico",
+            "Palheta",
+            "Parabrisa",
+            "Parafusos",
+            "Parâmetro de perfuração",
+            "Partida",
+            "Patolas",
+            "Patolas dianteira LE",
+            "Patolas dianteira LD",
+            "Patolas traseira LD",
+            "Patolas traseira LE",
+            "Pedal",
+            "Pedal de Freio",
+            "Pedal Acelerador",
+            "Pegador de telas",
+            "Pegador de haste",
+            "Percussão",
+            "Perfuratriz",
+            "Perfuratriz 1º estágio",
+            "Perfuratriz 2º estágio",
+            "Perfuratriz 3º estágio",
+            "Perfuratriz 4º estágio",
+            "Perfuratriz 5º estágio",
+            "Pino",
+            "Pino da proteção",
+            "Pino Trava",
+            "Pino da Tampa",
+            "Pino de articulação",
+            "Pino de fixação",
+            "Pino graxeiro",
+            "Pino Guia",
+            "Pino de inclinação da lamina",
+            "Pito",
+            "Placa eletrônica",
+            "Stop plate",
+            "Placa intermediária",
+            "Plug",
+            "Plug de tomada",
+            "Plug do controle",
+            "Plug da solenóide",
+            "Pneu",
+            "Pneu dianteiro",
+            "Retentor",
+            "Pneu Dianteiro LD",
+            "Reparo",
+            "Pneu Dianteiro LE",
+            "Borneira",
+            "Pneu Traseiro LD",
+            "Pneu Traseiro LE",
+            "Polia",
+            "Polia do cabo de avanço",
+            "Polo da bateria",
+            "Ponteira",
+            "Porca",
+            "Porta",
+            "Posicionador da Haste",
+            "Potenciometro",
+            "Power extractor",
+            "Pressões",
+            "Pressão de ar",
+            "Pressão de avanço",
+            "Pressostato",
+            "Pressostato sistema ansul",
+            "Preventiva Lubritorque",
+            "Propulsora de graxa",
+            "Proteção",
+            "Proteção da correia",
+            "Proteção da roldana",
+            "Proteções de segurança",
+            "Punho",
+            "Radiador",
+            "Rádio",
+            "Regulador de tirante",
+            "Relé",
+            "Relé de partida",
+            "Relé de segurança",
+            "Relé térmico",
+            "Reservatório",
+            "Respiro do tanque",
+            "Retentor da luva",
+            "Retrovisor",
+            "Retrovisor LD",
+            "Retrovisor LE",
+            "Revestimento",
+            "Roda traseira LE",
+            "Roda traseira LD",
+            "Roda dianteira LE",
+            "Roda dianteira LD",
+            "Rolamento tensor",
+            "Roldana",
+            "Roldana do centralizador intermediário",
+            "Rompedor",
+            "Rosca",
+            "Rotação",
+            "Seletora",
+            "Seletora de Avanço",
+            "Sensor",
+            "Sensor de presença",
+            "Sensor Automático",
+            "Sensor de ângulo",
+            "Sensor avanço",
+            "Sensor de combustível",
+            "Sensor contador de haste",
+            "Sensor da báscula",
+            "Sensor da Porta",
+            "Sensor de inclinação",
+            "Sensor do H",
+            "Sensor do pegador de haste",
+            "Sensor de navegação",
+            "Sensor de nível",
+            "Sensor de posição",
+            "Sensor do Zoom",
+            "Sensor Fim de Curso",
+            "Sensor linear",
+            "Sensor de patola",
+            "Sensor press",
+            "Sensor de profundidade",
+            "Sensor de rotação",
+            "Sensor de sobrecarga",
+            "Sensor de temperatura",
+            "Sensor de velocidade",
+            "Sirene",
+            "Sirene de ré",
+            "Sistema Ansur",
+            "SLU",
+            "Solda",
+            "Solenoide",
+            "Solenoide de acionamento",
+            "Stop do supressor",
+            "Stinger",
+            "Suporte",
+            "Suporte da trava",
+            "Suporte da bucha",
+            "Suporte de mangueiras",
+            "Suporte do Centralizador",
+            "Suporte de reboque",
+            "Tampa",
+            "Tampa da articulação",
+            "Tampa do cabeçote",
+            "Tampa caixa de bateria",
+            "Tampa da caixa",
+            "Tampa do compartimento",
+            "Tampa de proteção",
+            "Tampa da Transmissão",
+            "Tampa traseira",
+            "Tanque de aditivo",
+            "Tanque de diesel",
+            "TCAD",
+            "Tensionador",
+            "Tensor da Correia",
+            "Terminal",
+            "Terminal de bateria",
+            "Terminais",
+            "Termostato",
+            "Tomada de pressão",
+            "Transdutor de freio",
+            "Transmissão",
+            "Trava",
+            "Trava do cesto",
+            "Trava do pino",
+            "Trilho",
+            "Trinco da Porta",
+            "Trocador de calor",
+            "Tubo",
+            "Tubo da bazuca",
+            "Tubo Extensivo",
+            "Tubo hidráulico",
+            "Tudo de lubrificação",
+            "Tubo Resina",
+            "Tubo do zoom",
+            "Válvula",
+            "Válvula de ar",
+            "Válvula de avanço",
+            "Válvula direcional",
+            "Válvula de expansão",
+            "Válvula de retenção",
+            "Válvula de rotação",
+            "Válvula Termostática",
+            "Válvula wastegate",
+            "Válvula 20",
+            "Válvula Y127",
+            "Vareta de nível",
+            "Vedações",
+            "Ventilador",
+            "Vidro",
+            "Vidro dianteiro",
+            "Vidro traseiro",
+            "Marcha",
+            "Turbina",
+            "Duto",
+            "Suporte da Câmera",
+            "Motor do Ar Condicionado",
+            "Coxin",
+            "Cachimbo D'Água",
+            "Sem Bateria",
+            "Oleo Hidraulico",
+            "Rolamento",
+            "Oleo Lubrificante",
+            "Disco Freio"
+        ]
+    };
+
+    function saveData() {
+        const data = hot.getData();
+        localStorage.setItem('tabelaInterativaData', JSON.stringify(data));
+    }
+
+    function loadData() {
+        const data = localStorage.getItem('tabelaInterativaData');
+        return data ? JSON.parse(data) : [
+            ["TH545i", "CB-001", "2024-07-01", "2024-07-01", "08:00", "10:00", "", "", "", "", 2.0, "1°", "Elétrica", "HAC", "Sistema de iluminação", "Farol"],
+            ["LH514", "CA-001", "2024-07-02", "2024-07-02", "09:00", "11:00", "", "", "", "", 2.0, "2°", "Lubrificação", "HMC", "Sistema de arrefecimento", "Radiador"],
+            ["DL421-15C", "CB-002", "2024-07-03", "2024-07-03", "10:00", "12:00", "", "", "", "", 2.0, "3°", "Mecânica", "HMP", "Sistema de transmissão e força", "Caixa de transmissão"]
+        ];
+    }
+
+    const hot = new Handsontable(container, {
+        data: loadData(),
+        colHeaders: ["Equipamento", "Tag", "Data Início", "Data Fim", "Hora Início", "Hora Fim", "Horímetro Início", "Descrição da Corretiva", "Ação", "Tempo Decorrido (Horas)", "Turno", "Tipo de Manutenção", "Código de Manutenção", "Sistema", "Sub Sistema", "Parte do Sub Sistema"],
+        columns: [
+            { type: 'dropdown', source: ["TH545i", "LH514", "DL421-15C", "DL431-7C", "DD421-60C", "DS411-C"] },
+            { type: 'dropdown', source: ["CB-001", "CA-001", "CB-002", "CA-002", "CB-003", "CB-004", "CA-004", "CB-005", "CB-006", "CB-007", "CA-008", "CB-008", "FB-002", "FD-003", "FD-004", "JB-001", "JB-002", "JB-003", "RB-001", "RB-002"] },
+            { type: 'date', dateFormat: 'YYYY-MM-DD', correctFormat: true, validator: 'date' },
+            { type: 'date', dateFormat: 'YYYY-MM-DD', correctFormat: true, validator: 'date' },
+            { type: 'dropdown', source: timeSource, strict: true },
+            { type: 'dropdown', source: timeSource, strict: true },
+            { type: 'numeric', allowInvalid: false, validator: 'numeric' },
+            { type: 'text' },
+            { type: 'text' },
+            { type: 'numeric', readOnly: true },
+            { type: 'dropdown', source: dropdownOptions.turno, strict: true },
+            { type: 'dropdown', source: dropdownOptions.tipoManutencao, strict: true },
+            { type: 'dropdown', source: dropdownOptions.codigoManutencao, strict: true },
+            { type: 'dropdown', source: dropdownOptions.sistema, strict: true },
+            { type: 'dropdown', source: dropdownOptions.subSistema, strict: true },
+            { type: 'dropdown', source: dropdownOptions.parteSubSistema, strict: true }
+        ],
+        rowHeaders: true,
+        contextMenu: true,
+        manualColumnResize: true,
+        manualColumnMove: true,
+        dropdownMenu: true,
+        filters: true,
+        afterChange: function(changes, source) {
+            if (!changes) {
+                return;
+            }
+            changes.forEach(([row, prop, oldValue, newValue]) => {
+                if ([2, 3, 4, 5].includes(prop)) {
+                    calculateValues(row);
+                }
+            });
+            saveData();
+        },
+        licenseKey: 'non-commercial-and-evaluation'
+    });
+
+    function calculateValues(row) {
+        const dataInicio = hot.getDataAtCell(row, 2);
+        const horaInicio = hot.getDataAtCell(row, 4);
+        const dataFim = hot.getDataAtCell(row, 3);
+        const horaFim = hot.getDataAtCell(row, 5);
+
+        if (dataInicio && horaInicio && dataFim && horaFim) {
+            const inicio = new Date(`${dataInicio}T${horaInicio}`);
+            const fim = new Date(`${dataFim}T${horaFim}`);
+            const tempoDecorrido = (fim - inicio) / (1000 * 60 * 60);
+
+            hot.setDataAtCell(row, 9, tempoDecorrido.toFixed(2));
+        }
+    }
+
+    function addRow() {
+        hot.alter('insert_row');
+        saveData();
+    }
+
+    document.getElementById('downloadExcelButton').addEventListener('click', function() {
+        const data = hot.getData();
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Tabela");
+        XLSX.writeFile(wb, "tabela_interativa.xlsx");
+    });
+
+    function addItem() {
+        const menu = document.getElementById('menuSelect').value;
+        const newItem = document.getElementById('menuItem').value;
+
+        if (newItem && dropdownOptions[menu].indexOf(newItem) === -1) {
+            dropdownOptions[menu].push(newItem);
+            hot.getSettings().columns.find(col => col.type === 'dropdown' && col.source === dropdownOptions[menu]).source.push(newItem);
+            hot.render();
+        }
+    }
+
+    function removeItem() {
+        const menu = document.getElementById('menuSelect').value;
+        const itemToRemove = document.getElementById('menuItem').value;
+
+        const index = dropdownOptions[menu].indexOf(itemToRemove);
+        if (index !== -1) {
+            dropdownOptions[menu].splice(index, 1);
+            const column = hot.getSettings().columns.find(col => col.type === 'dropdown' && col.source === dropdownOptions[menu]);
+            const itemIndex = column.source.indexOf(itemToRemove);
+            if (itemIndex !== -1) {
+                column.source.splice(itemIndex, 1);
+            }
+            hot.render();
+        }
+    }
+</script>
+
+</body>
+</html>
+
